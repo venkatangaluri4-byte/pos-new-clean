@@ -2,6 +2,15 @@
 <html>
 <head>
   <title>Products</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    .card {
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+    }
+  </style>
 </head>
 <body>
 
@@ -16,7 +25,7 @@ const client = supabase.createClient(
   "sb_publishable_uxbSDRGHJS84hhc-kvOaQw_yINaoJHY"
 );
 
-async function load() {
+async function loadProducts() {
   const { data, error } = await client.from("products").select("*");
 
   if (error) {
@@ -25,11 +34,21 @@ async function load() {
     return;
   }
 
-  document.getElementById("list").innerHTML =
-    data.map(p => `<p>${p.name} - ${p.selling_price || p.price}</p>`).join("");
+  if (!data.length) {
+    document.getElementById("list").innerText = "No products found";
+    return;
+  }
+
+  document.getElementById("list").innerHTML = data.map(p => `
+    <div class="card">
+      <b>${p.name}</b><br>
+      Color: ${p.color || "-"}<br>
+      Price: ${p.selling_price}
+    </div>
+  `).join("");
 }
 
-load();
+loadProducts();
 </script>
 
 </body>
