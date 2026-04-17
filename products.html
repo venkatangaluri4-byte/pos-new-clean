@@ -1,55 +1,198 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Products</title>
-  <style>
-    body { font-family: Arial; padding: 20px; }
-    .card {
-      border: 1px solid #ddd;
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Urban Vault — Products</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --gold: #d4af37;
+    --bg: #141a0e;
+    --bg2: #1c2413;
+    --bg3: #232e18;
+    --surface: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.08);
+    --text: #f0ede6;
+    --muted: rgba(240,237,230,0.5);
+    --danger: #f87171;
+    --success: #86efac;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  nav { background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 2px; padding: 0 20px; height: 52px; }
+  .nav-brand { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); letter-spacing:.05em; margin-right: 24px; }
+  nav a { color: var(--muted); text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; transition: all .15s; }
+  nav a:hover { color: var(--text); background: var(--surface); }
+  nav a.active { color: var(--gold); background: rgba(212,175,55,0.1); }
+  .page { padding: 28px 24px; max-width: 1000px; margin: 0 auto; }
+  .page-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: var(--gold); letter-spacing:.05em; margin-bottom: 24px; }
+  .section-title { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px; }
+  .form-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 22px; margin-bottom: 32px; }
+  .form-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .field input {
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); border-radius: 7px; padding: 8px 12px;
+    font-family: inherit; font-size: 14px; outline: none; transition: border-color .15s;
+  }
+  .field input:focus { border-color: var(--gold); }
+  .field input::placeholder { color: var(--muted); }
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+  .sub-label { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .btn-add {
+    background: var(--gold); color: var(--bg);
+    border: none; border-radius: 8px; padding: 10px 24px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing:.04em;
+    cursor: pointer; transition: opacity .15s; margin-top: 4px;
+  }
+  .btn-add:hover { opacity: .88; }
+  .msg { border-radius: 8px; padding: 9px 14px; font-size: 13px; margin-top: 12px; }
+  .msg.ok  { background: rgba(134,239,172,0.12); color: var(--success); }
+  .msg.err { background: rgba(248,113,113,0.12); color: var(--danger); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--bg3); color: var(--muted); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: var(--surface); }
+  .size-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--bg3); border: 1px solid var(--border); border-radius: 5px; padding: 2px 8px; font-size: 12px; }
+  .chip.zero { opacity: 0.35; }
+  .chip .qty { color: var(--gold); font-weight: 500; }
+  .btn-del { background: rgba(248,113,113,0.12); color: var(--danger); border: none; border-radius: 5px; padding: 3px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .btn-del:hover { background: rgba(248,113,113,0.25); }
+  .loading { color: var(--muted); font-size: 13px; padding: 16px 0; }
+</style>
 </head>
 <body>
+<nav>
+  <div class="nav-brand">Urban Vault</div>
+  <a href="index.html">Dashboard</a>
+  <a href="pos.html">POS</a>
+  <a href="products.html" class="active">Products</a>
+  <a href="sales.html">Sales</a>
+  <a href="pl.html">P&amp;L</a>
+  <a href="customers.html">Customers</a>
+</nav>
 
-<h2>Products</h2>
-<div id="list">Loading...</div>
+<div class="page">
+  <div class="page-title">Products</div>
+
+  <div class="form-panel">
+    <div class="section-title">Add new product</div>
+    <div class="form-row">
+      <div class="field"><label>Name</label><input id="name" placeholder="e.g. Cargo Jacket" style="width:180px"></div>
+      <div class="field"><label>Color</label><input id="color" placeholder="e.g. Olive" style="width:130px"></div>
+      <div class="field"><label>Selling price ($)</label><input id="price" type="number" placeholder="0.00" style="width:130px"></div>
+    </div>
+    <div class="sub-label">Stock by size</div>
+    <div class="form-row">
+      <div class="field"><label>XS</label><input id="xs" type="number" placeholder="0" style="width:70px"></div>
+      <div class="field"><label>S</label><input id="s" type="number" placeholder="0" style="width:70px"></div>
+      <div class="field"><label>M</label><input id="m" type="number" placeholder="0" style="width:70px"></div>
+      <div class="field"><label>L</label><input id="l" type="number" placeholder="0" style="width:70px"></div>
+      <div class="field"><label>XL</label><input id="xl" type="number" placeholder="0" style="width:70px"></div>
+      <div class="field"><label>XXL</label><input id="xxl" type="number" placeholder="0" style="width:70px"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="sub-label">Cost / investment batches</div>
+    <div class="form-row">
+      <div class="field"><label>Batch 1 qty</label><input id="b1qty" type="number" placeholder="0" style="width:110px"></div>
+      <div class="field"><label>Batch 1 cost/unit ($)</label><input id="b1cost" type="number" placeholder="0.00" style="width:140px"></div>
+      <div class="field"><label>Batch 2 qty</label><input id="b2qty" type="number" placeholder="0" style="width:110px"></div>
+      <div class="field"><label>Batch 2 cost/unit ($)</label><input id="b2cost" type="number" placeholder="0.00" style="width:140px"></div>
+    </div>
+    <button class="btn-add" onclick="addProduct()">Add Product</button>
+    <div id="msg"></div>
+  </div>
+
+  <div class="section-title">All products</div>
+  <div id="prodTable"><p class="loading">Loading...</p></div>
+</div>
 
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-
+<script src="supabase.js"></script>
 <script>
-const client = supabase.createClient(
-  "https://kyyspgesdvpzajvoaoir.supabase.co",
-  "sb_publishable_uxbSDRGHJS84hhc-kvOaQw_yINaoJHY"
-);
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const val = id => $( id).value.trim();
+const num = id => Number($(id).value) || 0;
+
+async function addProduct() {
+  const name = val("name"), color = val("color"), price = num("price");
+  if (!name) return showMsg("Product name is required.", "err");
+  if (!price) return showMsg("Selling price is required.", "err");
+
+  const { data, error } = await client.from("products").insert([{ name, color, selling_price: price }]).select().single();
+  if (error) return showMsg("Error: " + error.message, "err");
+
+  const id = data.id;
+  const sizes = ["XS","S","M","L","XL","XXL"];
+  const ids   = ["xs","s","m","l","xl","xxl"];
+  await client.from("inventory").insert(sizes.map((size, i) => ({ product_id: id, size, quantity: num(ids[i]) })));
+
+  const batches = [
+    { qty: num("b1qty"), cost: num("b1cost") },
+    { qty: num("b2qty"), cost: num("b2cost") }
+  ];
+  for (const b of batches) {
+    if (b.qty > 0 && b.cost > 0) {
+      await client.from("purchases").insert([{ product_id: id, quantity: b.qty, cost_per_unit: b.cost }]);
+    }
+  }
+
+  showMsg(`"${name}" added successfully!`, "ok");
+  ["name","color","price","xs","s","m","l","xl","xxl","b1qty","b1cost","b2qty","b2cost"].forEach(id => $(id).value = "");
+  loadProducts();
+}
+
+async function deleteProduct(id, name) {
+  if (!confirm(`Delete "${name}"? This also removes its stock and purchase records.`)) return;
+  await client.from("products").delete().eq("id", id);
+  loadProducts();
+}
 
 async function loadProducts() {
-  const { data, error } = await client.from("products").select("*");
+  const [{ data: products }, { data: inventory }, { data: purchases }] = await Promise.all([
+    client.from("products").select("*").order("created_at", { ascending: false }),
+    client.from("inventory").select("*"),
+    client.from("purchases").select("*")
+  ]);
 
-  if (error) {
-    document.getElementById("list").innerText = error.message;
-    console.error(error);
-    return;
-  }
+  const p = products || [], inv = inventory || [], pur = purchases || [];
+  if (p.length === 0) { $("prodTable").innerHTML = `<p class="loading">No products yet. Add one above.</p>`; return; }
 
-  if (!data.length) {
-    document.getElementById("list").innerText = "No products found";
-    return;
-  }
+  let html = `<table>
+    <tr><th>Name</th><th>Color</th><th>Price</th><th>Stock by size</th><th>Total cost</th><th></th></tr>`;
 
-  document.getElementById("list").innerHTML = data.map(p => `
-    <div class="card">
-      <b>${p.name}</b><br>
-      Color: ${p.color || "-"}<br>
-      Price: ${p.selling_price}
-    </div>
-  `).join("");
+  p.forEach(prod => {
+    const chips = ["XS","S","M","L","XL","XXL"].map(sz => {
+      const inv2 = inv.find(x => x.product_id === prod.id && x.size === sz);
+      const q = inv2?.quantity || 0;
+      return `<div class="chip ${q === 0 ? 'zero' : ''}"><span>${sz}</span><span class="qty">${q}</span></div>`;
+    }).join("");
+
+    const cost = pur.filter(x => x.product_id === prod.id).reduce((s, b) => s + b.quantity * b.cost_per_unit, 0);
+
+    html += `<tr>
+      <td style="font-weight:500">${prod.name}</td>
+      <td style="color:var(--muted)">${prod.color || "—"}</td>
+      <td style="color:var(--gold)">$${prod.selling_price.toFixed(2)}</td>
+      <td><div class="size-chips">${chips}</div></td>
+      <td>$${cost.toFixed(2)}</td>
+      <td><button class="btn-del" onclick="deleteProduct('${prod.id}','${prod.name.replace(/'/g,"\\'")}')">Delete</button></td>
+    </tr>`;
+  });
+
+  $("prodTable").innerHTML = html + "</table>";
+}
+
+function showMsg(text, type) {
+  $("msg").innerHTML = `<div class="msg ${type}">${text}</div>`;
+  setTimeout(() => { if($("msg")) $("msg").innerHTML = ""; }, 4000);
 }
 
 loadProducts();
 </script>
-
 </body>
 </html>
