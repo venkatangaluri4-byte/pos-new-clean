@@ -192,19 +192,48 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <script>
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const client = window.supabaseClient;
 const $ = id => document.getElementById(id);
 
 let allProducts = [], allInventory = [], cart = [];
 
 async function loadData() {
-  const [{ data: p }, { data: i }] = await Promise.all([
-    client.from("products").select("*").order("name"),
-    client.from("inventory").select("*")
-  ]);
-  allProducts = p || [];
-  allInventory = i || [];
-  renderProducts();
+  try {
+    if (!client) {
+      console.error("Supabase client is not initialized.");
+      showMsg("Supabase connection is not ready.", "err");
+      $("prodGrid").innerHTML = `<p class="loading">Connection error. Check Supabase setup.</p>`;
+      return;
+    }
+
+    const [productsRes, inventoryRes] = await Promise.all([
+      client.from("products").select("*").order("name"),
+      client.from("inventory").select("*")
+    ]);
+
+    if (productsRes.error) {
+      console.error("Products fetch failed:", productsRes.error);
+      showMsg("Failed to load products: " + productsRes.error.message, "err");
+      $("prodGrid").innerHTML = `<p class="loading">Failed to load products.</p>`;
+      return;
+    }
+
+    if (inventoryRes.error) {
+      console.error("Inventory fetch failed:", inventoryRes.error);
+      showMsg("Failed to load inventory: " + inventoryRes.error.message, "err");
+      $("prodGrid").innerHTML = `<p class="loading">Failed to load inventory.</p>`;
+      return;
+    }
+
+    allProducts = productsRes.data || [];
+    allInventory = inventoryRes.data || [];
+
+    renderProducts();
+  } catch (err) {
+    console.error("Unexpected loadData error:", err);
+    showMsg("Unexpected error loading POS data.", "err");
+    $("prodGrid").innerHTML = `<p class="loading">Unexpected error while loading products.</p>`;
+  }
 }
 
 function renderProducts() {
@@ -217,17 +246,18 @@ function renderProducts() {
     return;
   }
   $("prodGrid").innerHTML = filtered.map(p => {
+    const price = Number(p.selling_price || 0);
     const sizes = ["XS","S","M","L","XL","XXL"].map(sz => {
       const inv = allInventory.find(x => x.product_id === p.id && x.size === sz);
       const qty = inv?.quantity || 0;
       return `<button class="sz" ${qty === 0 ? "disabled" : ""}
-        onclick="addToCart('${p.id}','${p.name}','${p.color || ""}','${sz}',${p.selling_price})"
+        onclick='addToCart(${JSON.stringify(p.id)}, ${JSON.stringify(p.name)}, ${JSON.stringify(p.color || "")}, ${JSON.stringify(sz)}, ${price})'
         title="${qty} in stock">${sz}</button>`;
     }).join("");
     return `<div class="prod-card">
       <div class="prod-name">${p.name}</div>
       <div class="prod-color">${p.color || ""}</div>
-      <div class="prod-price">$${p.selling_price.toFixed(2)}</div>
+      <div class="prod-price">$${price.toFixed(2)}</div>
       <div class="size-row">${sizes}</div>
     </div>`;
   }).join("");
@@ -292,37 +322,72 @@ function clearCart() { cart = []; renderCart(); $("msg").innerHTML = ""; }
 
 async function completeSale() {
   if (cart.length === 0) return showMsg("Cart is empty.", "err");
+  if (!client) {
+    console.error("Cannot checkout: Supabase client is missing.");
+    return showMsg("Cannot connect to Supabase.", "err");
+  }
+
   $("btnSale").disabled = true;
 
-  const total = cart.reduce((s, x) => s + x.qty * x.price, 0);
-  const { data: sale, error } = await client.from("sales").insert([{
-    total,
-    payment_method: $("payMethod").value
-  }]).select().single();
+  try {
+    const total = cart.reduce((s, x) => s + x.qty * x.price, 0);
+    const paymentMethod = $("payMethod").value;
 
-  if (error) { $("btnSale").disabled = false; return showMsg("Sale failed: " + error.message, "err"); }
+    const { data: sale, error: saleError } = await client
+      .from("sales")
+      .insert([{ total, payment_method: paymentMethod }])
+      .select()
+      .single();
 
-  await client.from("sale_items").insert(
-    cart.map(item => ({
+    if (saleError || !sale) {
+      console.error("Sales insert failed:", saleError);
+      showMsg("Sale failed: " + (saleError?.message || "No sale row returned."), "err");
+      return;
+    }
+
+    const saleItemsPayload = cart.map(item => ({
       sale_id: sale.id,
       product_id: item.productId,
       size: item.size,
       quantity: item.qty,
       price_at_sale: item.price
-    }))
-  );
+    }));
 
-  for (const item of cart) {
-    const inv = allInventory.find(x => x.product_id === item.productId && x.size === item.size);
-    if (inv) {
-      await client.from("inventory").update({ quantity: Math.max(0, inv.quantity - item.qty) }).eq("id", inv.id);
+    const { error: saleItemsError } = await client.from("sale_items").insert(saleItemsPayload);
+    if (saleItemsError) {
+      console.error("sale_items insert failed:", saleItemsError);
+      showMsg("Sale item insert failed: " + saleItemsError.message, "err");
+      return;
     }
-  }
 
-  showMsg(`Sale complete! Total: $${total.toFixed(2)}`, "ok");
-  clearCart();
-  $("btnSale").disabled = false;
-  loadData();
+    for (const item of cart) {
+      const inv = allInventory.find(x => x.product_id === item.productId && x.size === item.size);
+      if (!inv) {
+        console.warn("Inventory row not found for product/size:", item.productId, item.size);
+        continue;
+      }
+
+      const { error: invUpdateError } = await client
+        .from("inventory")
+        .update({ quantity: Math.max(0, inv.quantity - item.qty) })
+        .eq("id", inv.id);
+
+      if (invUpdateError) {
+        console.error("Inventory update failed for row id", inv.id, invUpdateError);
+        showMsg("Inventory update failed: " + invUpdateError.message, "err");
+        return;
+      }
+    }
+
+    showMsg(`Sale complete! Total: $${total.toFixed(2)}`, "ok");
+    clearCart();
+    loadData();
+  } catch (err) {
+    console.error("Unexpected checkout error:", err);
+    showMsg("Unexpected checkout error.", "err");
+  } finally {
+    $("btnSale").disabled = false;
+  }
 }
 
 function showMsg(text, type) {
