@@ -1,5 +1,5 @@
 const SUPABASE_URL = "https://kyyspgesdvpzajvoaoir.supabase.co";
 
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5eXNwZ2VzZHZwemFqdm9hb2lyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNTE5ODgsImV4cCI6MjA5MTkyNzk4OH0.DIpv2eSoUyiiJrR3zvR8dI8NXlJQjhcqcZOqyew62M8";
+const SUPABASE_KEY = "PASTE_YOUR_PUBLISHABLE_KEY_HERE";
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
