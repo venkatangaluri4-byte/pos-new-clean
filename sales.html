@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Urban Vault — Sales</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --gold: #d4af37;
+    --bg: #141a0e; --bg2: #1c2413; --bg3: #232e18;
+    --surface: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.08);
+    --text: #f0ede6; --muted: rgba(240,237,230,0.5);
+    --danger: #f87171; --success: #86efac;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  nav { background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 2px; padding: 0 20px; height: 52px; }
+  .nav-brand { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); letter-spacing:.05em; margin-right: 24px; }
+  nav a { color: var(--muted); text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; transition: all .15s; }
+  nav a:hover { color: var(--text); background: var(--surface); }
+  nav a.active { color: var(--gold); background: rgba(212,175,55,0.1); }
+  .page { padding: 28px 24px; max-width: 1000px; margin: 0 auto; }
+  .page-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: var(--gold); letter-spacing:.05em; margin-bottom: 24px; }
+  .top-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+  .top-bar input, .top-bar select {
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: 8px 12px;
+    font-family: inherit; font-size: 13px; outline: none;
+  }
+  .top-bar input:focus, .top-bar select:focus { border-color: var(--gold); }
+  .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+  .mini-stat { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; }
+  .mini-stat .ml { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing:.07em; margin-bottom: 4px; }
+  .mini-stat .mv { font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: var(--gold); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--bg3); color: var(--muted); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing:.06em; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: var(--surface); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 500; }
+  .badge-cash     { background: rgba(134,239,172,0.12); color: var(--success); }
+  .badge-card     { background: rgba(212,175,55,0.12);  color: var(--gold); }
+  .badge-transfer { background: rgba(147,197,253,0.12); color: #93c5fd; }
+  .items-list { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .loading { color: var(--muted); font-size: 13px; padding: 16px 0; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand">Urban Vault</div>
+  <a href="index.html">Dashboard</a>
+  <a href="pos.html">POS</a>
+  <a href="products.html">Products</a>
+  <a href="sales.html" class="active">Sales</a>
+  <a href="pl.html">P&amp;L</a>
+  <a href="customers.html">Customers</a>
+</nav>
+
+<div class="page">
+  <div class="page-title">Sales History</div>
+
+  <div class="top-bar">
+    <input type="date" id="dateFrom">
+    <span style="color:var(--muted);font-size:13px">to</span>
+    <input type="date" id="dateTo">
+    <select id="payFilter">
+      <option value="">All payment methods</option>
+      <option value="cash">Cash</option>
+      <option value="card">Card</option>
+      <option value="transfer">Transfer / QR</option>
+    </select>
+    <button onclick="loadSales()" style="background:var(--gold);color:var(--bg);border:none;border-radius:8px;padding:8px 16px;font-family:inherit;font-size:13px;cursor:pointer">Filter</button>
+    <button onclick="resetFilter()" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:inherit;font-size:13px;cursor:pointer">Reset</button>
+  </div>
+
+  <div class="stat-row" id="statRow"></div>
+  <div id="salesTable"><p class="loading">Loading...</p></div>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script>
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+
+function resetFilter() {
+  $("dateFrom").value = "";
+  $("dateTo").value = "";
+  $("payFilter").value = "";
+  loadSales();
+}
+
+async function loadSales() {
+  $("salesTable").innerHTML = `<p class="loading">Loading...</p>`;
+
+  let query = client.from("sales").select("*").order("created_at", { ascending: false });
+  const from = $("dateFrom").value, to = $("dateTo").value, pay = $("payFilter").value;
+  if (from) query = query.gte("created_at", from);
+  if (to)   query = query.lte("created_at", to + "T23:59:59");
+  if (pay)  query = query.eq("payment_method", pay);
+
+  const { data: sales } = await query;
+  const { data: saleItems } = await client.from("sale_items").select("*, products(name, color)");
+
+  const s = sales || [], si = saleItems || [];
+
+  const totalRevenue = s.reduce((sum, x) => sum + x.total, 0);
+  const totalItems   = si.filter(x => s.find(sale => sale.id === x.sale_id)).reduce((sum, x) => sum + x.quantity, 0);
+
+  $("statRow").innerHTML = `
+    <div class="mini-stat"><div class="ml">Transactions</div><div class="mv">${s.length}</div></div>
+    <div class="mini-stat"><div class="ml">Total Revenue</div><div class="mv">$${totalRevenue.toFixed(2)}</div></div>
+    <div class="mini-stat"><div class="ml">Items Sold</div><div class="mv">${totalItems}</div></div>
+  `;
+
+  if (s.length === 0) {
+    $("salesTable").innerHTML = `<p class="loading">No sales found for this filter.</p>`;
+    return;
+  }
+
+  let html = `<table><tr><th>Date</th><th>Time</th><th>Payment</th><th>Items</th><th>Total</th></tr>`;
+
+  s.forEach(sale => {
+    const dt = new Date(sale.created_at);
+    const dateStr = dt.toLocaleDateString();
+    const timeStr = dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const items = si.filter(x => x.sale_id === sale.id);
+    const itemsList = items.map(x => `${x.products?.name || "?"} (${x.size}) ×${x.quantity}`).join(", ");
+    const badgeClass = sale.payment_method === "cash" ? "badge-cash" : sale.payment_method === "card" ? "badge-card" : "badge-transfer";
+
+    html += `<tr>
+      <td>${dateStr}</td>
+      <td style="color:var(--muted)">${timeStr}</td>
+      <td><span class="badge ${badgeClass}">${sale.payment_method}</span></td>
+      <td><div class="items-list">${itemsList || "—"}</div></td>
+      <td style="color:var(--gold);font-weight:500">$${sale.total.toFixed(2)}</td>
+    </tr>`;
+  });
+
+  $("salesTable").innerHTML = html + "</table>";
+}
+
+loadSales();
+</script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Urban Vault — Customers</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --gold: #d4af37;
+    --bg: #141a0e; --bg2: #1c2413; --bg3: #232e18;
+    --surface: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.08);
+    --text: #f0ede6; --muted: rgba(240,237,230,0.5);
+    --danger: #f87171; --success: #86efac;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  nav { background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 2px; padding: 0 20px; height: 52px; }
+  .nav-brand { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); letter-spacing:.05em; margin-right: 24px; }
+  nav a { color: var(--muted); text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; transition: all .15s; }
+  nav a:hover { color: var(--text); background: var(--surface); }
+  nav a.active { color: var(--gold); background: rgba(212,175,55,0.1); }
+  .page { padding: 28px 24px; max-width: 900px; margin: 0 auto; }
+  .page-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: var(--gold); letter-spacing:.05em; margin-bottom: 24px; }
+  .form-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 28px; }
+  .section-title { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing:.08em; margin-bottom: 14px; }
+  .form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing:.06em; }
+  .field input {
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); border-radius: 7px; padding: 8px 12px;
+    font-family: inherit; font-size: 14px; outline: none; transition: border-color .15s;
+  }
+  .field input:focus { border-color: var(--gold); }
+  .field input::placeholder { color: var(--muted); }
+  .btn-add { background: var(--gold); color: var(--bg); border: none; border-radius: 8px; padding: 9px 22px; font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing:.04em; cursor: pointer; transition: opacity .15s; }
+  .btn-add:hover { opacity: .88; }
+  .msg { border-radius: 8px; padding: 9px 14px; font-size: 13px; margin-top: 12px; }
+  .msg.ok  { background: rgba(134,239,172,0.12); color: var(--success); }
+  .msg.err { background: rgba(248,113,113,0.12); color: var(--danger); }
+  .search-bar { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 9px 14px; font-family: inherit; font-size: 14px; outline: none; margin-bottom: 16px; transition: border-color .15s; }
+  .search-bar:focus { border-color: var(--gold); }
+  .search-bar::placeholder { color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--bg3); color: var(--muted); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing:.06em; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: var(--surface); }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; background: rgba(212,175,55,0.15); color: var(--gold); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; }
+  .btn-del { background: rgba(248,113,113,0.12); color: var(--danger); border: none; border-radius: 5px; padding: 3px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .btn-del:hover { background: rgba(248,113,113,0.25); }
+  .loading { color: var(--muted); font-size: 13px; padding: 16px 0; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand">Urban Vault</div>
+  <a href="index.html">Dashboard</a>
+  <a href="pos.html">POS</a>
+  <a href="products.html">Products</a>
+  <a href="sales.html">Sales</a>
+  <a href="pl.html">P&amp;L</a>
+  <a href="customers.html" class="active">Customers</a>
+</nav>
+
+<div class="page">
+  <div class="page-title">Customers</div>
+
+  <div class="form-panel">
+    <div class="section-title">Add customer</div>
+    <div class="form-row">
+      <div class="field"><label>Name</label><input id="cname" placeholder="Full name" style="width:200px"></div>
+      <div class="field"><label>Phone</label><input id="cphone" placeholder="+1 234 567 8900" style="width:180px"></div>
+      <button class="btn-add" onclick="addCustomer()">Add</button>
+    </div>
+    <div id="msg"></div>
+  </div>
+
+  <div class="section-title">All customers</div>
+  <input class="search-bar" id="search" placeholder="Search by name or phone..." oninput="renderCustomers()">
+  <div id="custTable"><p class="loading">Loading...</p></div>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script>
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+
+let allCustomers = [];
+
+async function addCustomer() {
+  const name = $("cname").value.trim();
+  const phone = $("cphone").value.trim();
+  if (!name) return showMsg("Name is required.", "err");
+
+  const { error } = await client.from("customers").insert([{ name, phone }]);
+  if (error) return showMsg("Error: " + error.message, "err");
+
+  showMsg(`${name} added!`, "ok");
+  $("cname").value = ""; $("cphone").value = "";
+  loadCustomers();
+}
+
+async function deleteCustomer(id, name) {
+  if (!confirm(`Delete "${name}"?`)) return;
+  await client.from("customers").delete().eq("id", id);
+  loadCustomers();
+}
+
+async function loadCustomers() {
+  const { data } = await client.from("customers").select("*").order("created_at", { ascending: false });
+  allCustomers = data || [];
+  renderCustomers();
+}
+
+function renderCustomers() {
+  const q = $("search").value.toLowerCase();
+  const filtered = allCustomers.filter(c =>
+    c.name.toLowerCase().includes(q) || (c.phone || "").includes(q)
+  );
+
+  if (filtered.length === 0) {
+    $("custTable").innerHTML = `<p class="loading">No customers found.</p>`;
+    return;
+  }
+
+  let html = `<table><tr><th></th><th>Name</th><th>Phone</th><th>Total Spent</th><th>Since</th><th></th></tr>`;
+  filtered.forEach(c => {
+    const initials = c.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2);
+    const since = new Date(c.created_at).toLocaleDateString();
+    html += `<tr>
+      <td><div class="avatar">${initials}</div></td>
+      <td style="font-weight:500">${c.name}</td>
+      <td style="color:var(--muted)">${c.phone || "—"}</td>
+      <td style="color:var(--gold)">$${(c.total_spent || 0).toFixed(2)}</td>
+      <td style="color:var(--muted)">${since}</td>
+      <td><button class="btn-del" onclick="deleteCustomer('${c.id}','${c.name.replace(/'/g,"\\'")}')">Delete</button></td>
+    </tr>`;
+  });
+  $("custTable").innerHTML = html + "</table>";
+}
+
+function showMsg(text, type) {
+  $("msg").innerHTML = `<div class="msg ${type}">${text}</div>`;
+  setTimeout(() => { if($("msg")) $("msg").innerHTML = ""; }, 3500);
+}
+
+loadCustomers();
+</script>
+</body>
+</html>

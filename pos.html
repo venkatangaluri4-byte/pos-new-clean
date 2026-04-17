@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Urban Vault — POS</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --gold: #d4af37;
+    --bg: #141a0e;
+    --bg2: #1c2413;
+    --bg3: #232e18;
+    --surface: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.08);
+    --text: #f0ede6;
+    --muted: rgba(240,237,230,0.5);
+    --danger: #f87171;
+    --success: #86efac;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+  nav {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 2px;
+    padding: 0 20px; height: 52px; flex-shrink: 0;
+  }
+  .nav-brand { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); letter-spacing:.05em; margin-right: 24px; }
+  nav a { color: var(--muted); text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; transition: all .15s; }
+  nav a:hover { color: var(--text); background: var(--surface); }
+  nav a.active { color: var(--gold); background: rgba(212,175,55,0.1); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    flex: 1;
+    overflow: hidden;
+  }
+  @media(max-width: 750px) { .layout { grid-template-columns: 1fr; } }
+
+  .left { padding: 20px; overflow-y: auto; }
+  .right { background: var(--bg2); border-left: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; overflow-y: auto; }
+
+  .section-title { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+
+  .search-bar {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .search-bar:focus { border-color: var(--gold); }
+  .search-bar::placeholder { color: var(--muted); }
+
+  .prod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 10px; }
+
+  .prod-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    transition: border-color .15s;
+  }
+  .prod-card:hover { border-color: rgba(212,175,55,0.4); }
+  .prod-name { font-weight: 500; font-size: 14px; margin-bottom: 2px; }
+  .prod-color { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .prod-price { font-size: 15px; color: var(--gold); font-weight: 500; margin-bottom: 10px; }
+  .size-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .sz {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all .12s;
+  }
+  .sz:hover:not(:disabled) { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+  .sz:disabled { opacity: 0.25; cursor: not-allowed; }
+
+  .cart-title { font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: var(--gold); letter-spacing:.05em; margin-bottom: 16px; }
+
+  .cart-empty { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
+
+  .cart-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+  .ci-info { flex: 1; }
+  .ci-name { font-size: 13px; font-weight: 500; }
+  .ci-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .ci-price { font-size: 13px; color: var(--gold); white-space: nowrap; }
+  .ci-remove {
+    background: rgba(248,113,113,0.15);
+    color: var(--danger);
+    border: none; border-radius: 5px;
+    padding: 3px 8px; font-size: 12px;
+    cursor: pointer; font-family: inherit;
+  }
+  .ci-qty { display: flex; align-items: center; gap: 6px; }
+  .ci-qty button {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); border-radius: 4px; width: 22px; height: 22px;
+    font-size: 14px; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ci-qty span { font-size: 13px; min-width: 16px; text-align: center; }
+
+  .cart-total {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 14px 0 10px;
+    font-size: 15px;
+  }
+  .cart-total .amount { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--gold); }
+
+  .pay-select {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: 9px 12px;
+    font-family: inherit; font-size: 13px; margin-bottom: 10px; outline: none;
+  }
+  .pay-select:focus { border-color: var(--gold); }
+
+  .btn-sale {
+    width: 100%; background: var(--gold); color: var(--bg);
+    border: none; border-radius: 8px; padding: 13px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px;
+    letter-spacing: .05em; cursor: pointer; transition: opacity .15s;
+    margin-bottom: 8px;
+  }
+  .btn-sale:hover { opacity: 0.88; }
+  .btn-sale:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-clear {
+    width: 100%; background: transparent; border: 1px solid var(--border);
+    color: var(--muted); border-radius: 8px; padding: 9px;
+    font-family: inherit; font-size: 13px; cursor: pointer; transition: all .15s;
+  }
+  .btn-clear:hover { border-color: var(--danger); color: var(--danger); }
+
+  .msg { border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 10px; text-align: center; }
+  .msg.ok  { background: rgba(134,239,172,0.12); color: var(--success); }
+  .msg.err { background: rgba(248,113,113,0.12); color: var(--danger); }
+
+  .loading { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand">Urban Vault</div>
+  <a href="index.html">Dashboard</a>
+  <a href="pos.html" class="active">POS</a>
+  <a href="products.html">Products</a>
+  <a href="sales.html">Sales</a>
+  <a href="pl.html">P&amp;L</a>
+  <a href="customers.html">Customers</a>
+</nav>
+
+<div class="layout">
+  <div class="left">
+    <div class="section-title">Select product &amp; size</div>
+    <input class="search-bar" id="search" placeholder="Search by name or color..." oninput="renderProducts()">
+    <div class="prod-grid" id="prodGrid"><p class="loading">Loading products...</p></div>
+  </div>
+
+  <div class="right">
+    <div class="cart-title">Cart</div>
+    <div id="cartItems"><p class="cart-empty">Tap a size to add items.</p></div>
+    <div class="cart-total"><span>Total</span><span class="amount" id="cartTotal">$0.00</span></div>
+    <select class="pay-select" id="payMethod">
+      <option value="cash">Cash</option>
+      <option value="card">Card</option>
+      <option value="transfer">Transfer / QR</option>
+    </select>
+    <button class="btn-sale" id="btnSale" onclick="completeSale()">Complete Sale</button>
+    <button class="btn-clear" onclick="clearCart()">Clear cart</button>
+    <div id="msg"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script>
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+
+let allProducts = [], allInventory = [], cart = [];
+
+async function loadData() {
+  const [{ data: p }, { data: i }] = await Promise.all([
+    client.from("products").select("*").order("name"),
+    client.from("inventory").select("*")
+  ]);
+  allProducts = p || [];
+  allInventory = i || [];
+  renderProducts();
+}
+
+function renderProducts() {
+  const q = $("search").value.toLowerCase();
+  const filtered = allProducts.filter(p =>
+    p.name.toLowerCase().includes(q) || (p.color || "").toLowerCase().includes(q)
+  );
+  if (filtered.length === 0) {
+    $("prodGrid").innerHTML = `<p class="loading">No products found.</p>`;
+    return;
+  }
+  $("prodGrid").innerHTML = filtered.map(p => {
+    const sizes = ["XS","S","M","L","XL","XXL"].map(sz => {
+      const inv = allInventory.find(x => x.product_id === p.id && x.size === sz);
+      const qty = inv?.quantity || 0;
+      return `<button class="sz" ${qty === 0 ? "disabled" : ""}
+        onclick="addToCart('${p.id}','${p.name}','${p.color || ""}','${sz}',${p.selling_price})"
+        title="${qty} in stock">${sz}</button>`;
+    }).join("");
+    return `<div class="prod-card">
+      <div class="prod-name">${p.name}</div>
+      <div class="prod-color">${p.color || ""}</div>
+      <div class="prod-price">$${p.selling_price.toFixed(2)}</div>
+      <div class="size-row">${sizes}</div>
+    </div>`;
+  }).join("");
+}
+
+function addToCart(productId, name, color, size, price) {
+  const key = productId + "_" + size;
+  const existing = cart.find(x => x.key === key);
+  const inv = allInventory.find(x => x.product_id === productId && x.size === size);
+  const maxQty = inv?.quantity || 0;
+  if (existing) {
+    if (existing.qty >= maxQty) return showMsg(`Only ${maxQty} in stock.`, "err");
+    existing.qty++;
+  } else {
+    cart.push({ key, productId, name, color, size, price, qty: 1, maxQty });
+  }
+  renderCart();
+}
+
+function changeQty(key, delta) {
+  const item = cart.find(x => x.key === key);
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) cart = cart.filter(x => x.key !== key);
+  if (item.qty > item.maxQty) item.qty = item.maxQty;
+  renderCart();
+}
+
+function renderCart() {
+  if (cart.length === 0) {
+    $("cartItems").innerHTML = `<p class="cart-empty">Tap a size to add items.</p>`;
+    $("cartTotal").textContent = "$0.00";
+    return;
+  }
+  $("cartItems").innerHTML = cart.map(item => `
+    <div class="cart-item">
+      <div class="ci-info">
+        <div class="ci-name">${item.name} — ${item.size}</div>
+        <div class="ci-sub">$${item.price.toFixed(2)} each</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="ci-qty">
+          <button onclick="changeQty('${item.key}',-1)">−</button>
+          <span>${item.qty}</span>
+          <button onclick="changeQty('${item.key}',1)">+</button>
+        </div>
+        <div class="ci-price">$${(item.qty * item.price).toFixed(2)}</div>
+        <button class="ci-remove" onclick="removeFromCart('${item.key}')">✕</button>
+      </div>
+    </div>
+  `).join("");
+  const total = cart.reduce((s, x) => s + x.qty * x.price, 0);
+  $("cartTotal").textContent = "$" + total.toFixed(2);
+}
+
+function removeFromCart(key) {
+  cart = cart.filter(x => x.key !== key);
+  renderCart();
+}
+
+function clearCart() { cart = []; renderCart(); $("msg").innerHTML = ""; }
+
+async function completeSale() {
+  if (cart.length === 0) return showMsg("Cart is empty.", "err");
+  $("btnSale").disabled = true;
+
+  const total = cart.reduce((s, x) => s + x.qty * x.price, 0);
+  const { data: sale, error } = await client.from("sales").insert([{
+    total,
+    payment_method: $("payMethod").value
+  }]).select().single();
+
+  if (error) { $("btnSale").disabled = false; return showMsg("Sale failed: " + error.message, "err"); }
+
+  await client.from("sale_items").insert(
+    cart.map(item => ({
+      sale_id: sale.id,
+      product_id: item.productId,
+      size: item.size,
+      quantity: item.qty,
+      price_at_sale: item.price
+    }))
+  );
+
+  for (const item of cart) {
+    const inv = allInventory.find(x => x.product_id === item.productId && x.size === item.size);
+    if (inv) {
+      await client.from("inventory").update({ quantity: Math.max(0, inv.quantity - item.qty) }).eq("id", inv.id);
+    }
+  }
+
+  showMsg(`Sale complete! Total: $${total.toFixed(2)}`, "ok");
+  clearCart();
+  $("btnSale").disabled = false;
+  loadData();
+}
+
+function showMsg(text, type) {
+  $("msg").innerHTML = `<div class="msg ${type}">${text}</div>`;
+  setTimeout(() => { if ($("msg")) $("msg").innerHTML = ""; }, 4000);
+}
+
+loadData();
+</script>
+</body>
+</html>

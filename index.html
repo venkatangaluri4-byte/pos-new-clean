@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Urban Vault — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #d4af37;
+    --gold-dim: #a8892a;
+    --bg: #141a0e;
+    --bg2: #1c2413;
+    --bg3: #232e18;
+    --surface: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.08);
+    --text: #f0ede6;
+    --muted: rgba(240,237,230,0.5);
+    --danger: #f87171;
+    --success: #86efac;
+  }
+
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  nav {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 20px;
+    height: 52px;
+  }
+  .nav-brand {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--gold);
+    letter-spacing: .05em;
+    margin-right: 24px;
+  }
+  nav a {
+    color: var(--muted);
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 400;
+    transition: all .15s;
+  }
+  nav a:hover { color: var(--text); background: var(--surface); }
+  nav a.active { color: var(--gold); background: rgba(212,175,55,0.1); }
+
+  .page { padding: 28px 24px; max-width: 1100px; margin: 0 auto; }
+
+  .page-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    color: var(--gold);
+    letter-spacing: .05em;
+    margin-bottom: 24px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 16px;
+  }
+  .stat-card .slabel {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 8px;
+  }
+  .stat-card .svalue {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--gold);
+    letter-spacing: .03em;
+  }
+  .stat-card .svalue.green { color: var(--success); }
+  .stat-card .svalue.red { color: var(--danger); }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 12px;
+    margin-top: 28px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    background: var(--bg3);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  tr:hover td { background: var(--surface); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .badge-low { background: rgba(248,113,113,0.15); color: var(--danger); }
+  .badge-ok  { background: rgba(134,239,172,0.12); color: var(--success); }
+
+  .empty { color: var(--muted); font-size: 13px; padding: 16px 0; }
+
+  .loading { color: var(--muted); font-size: 13px; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">Urban Vault</div>
+  <a href="index.html" class="active">Dashboard</a>
+  <a href="pos.html">POS</a>
+  <a href="products.html">Products</a>
+  <a href="sales.html">Sales</a>
+  <a href="pl.html">P&amp;L</a>
+  <a href="customers.html">Customers</a>
+</nav>
+
+<div class="page">
+  <div class="page-title">Dashboard</div>
+
+  <div class="stats-grid" id="stats">
+    <div class="stat-card"><div class="slabel">Loading</div><div class="svalue loading">...</div></div>
+  </div>
+
+  <div class="section-title">Low stock alerts (under 3 units)</div>
+  <div id="lowstock"><p class="loading">Loading...</p></div>
+
+  <div class="section-title">Top products by revenue</div>
+  <div id="toptable"><p class="loading">Loading...</p></div>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script>
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+
+async function load() {
+  const [{ data: products }, { data: purchases }, { data: saleItems }, { data: inventory }] = await Promise.all([
+    client.from("products").select("*"),
+    client.from("purchases").select("*"),
+    client.from("sale_items").select("*"),
+    client.from("inventory").select("*")
+  ]);
+
+  const p = products || [], pur = purchases || [], si = saleItems || [], inv = inventory || [];
+
+  let totalInvestment = 0, totalRevenue = 0, totalSold = 0;
+
+  p.forEach(prod => {
+    pur.filter(x => x.product_id === prod.id).forEach(b => {
+      totalInvestment += b.quantity * b.cost_per_unit;
+    });
+    const items = si.filter(x => x.product_id === prod.id);
+    const qty = items.reduce((s, x) => s + x.quantity, 0);
+    totalRevenue += qty * prod.selling_price;
+    totalSold += qty;
+  });
+
+  const profit = totalRevenue - totalInvestment;
+  const pct = totalInvestment ? ((profit / totalInvestment) * 100).toFixed(1) : 0;
+  const profitClass = profit >= 0 ? "green" : "red";
+
+  $("stats").innerHTML = `
+    <div class="stat-card"><div class="slabel">Investment</div><div class="svalue">$${totalInvestment.toFixed(2)}</div></div>
+    <div class="stat-card"><div class="slabel">Revenue</div><div class="svalue">$${totalRevenue.toFixed(2)}</div></div>
+    <div class="stat-card"><div class="slabel">Profit</div><div class="svalue ${profitClass}">$${profit.toFixed(2)}</div></div>
+    <div class="stat-card"><div class="slabel">Profit %</div><div class="svalue ${profitClass}">${pct}%</div></div>
+    <div class="stat-card"><div class="slabel">Items Sold</div><div class="svalue">${totalSold}</div></div>
+    <div class="stat-card"><div class="slabel">Products</div><div class="svalue">${p.length}</div></div>
+  `;
+
+  const lowRows = inv.filter(x => x.quantity > 0 && x.quantity < 3);
+  if (lowRows.length === 0) {
+    $("lowstock").innerHTML = `<p class="empty">No low stock issues — all good.</p>`;
+  } else {
+    let h = `<table><tr><th>Product</th><th>Size</th><th>Qty</th><th>Status</th></tr>`;
+    lowRows.forEach(r => {
+      const prod = p.find(x => x.id === r.product_id);
+      h += `<tr>
+        <td>${prod?.name || "—"} ${prod?.color ? `<span style="color:var(--muted)">${prod.color}</span>` : ""}</td>
+        <td>${r.size}</td>
+        <td style="color:var(--danger);font-weight:500">${r.quantity}</td>
+        <td><span class="badge badge-low">Low stock</span></td>
+      </tr>`;
+    });
+    $("lowstock").innerHTML = h + "</table>";
+  }
+
+  const topProds = p.map(prod => {
+    const items = si.filter(x => x.product_id === prod.id);
+    const qty = items.reduce((s, x) => s + x.quantity, 0);
+    const rev = qty * prod.selling_price;
+    const stock = inv.filter(x => x.product_id === prod.id).reduce((s, x) => s + x.quantity, 0);
+    return { ...prod, qty, rev, stock };
+  }).sort((a, b) => b.rev - a.rev);
+
+  if (topProds.length === 0) {
+    $("toptable").innerHTML = `<p class="empty">No products yet.</p>`;
+    return;
+  }
+
+  let t = `<table><tr><th>Product</th><th>Color</th><th>Stock</th><th>Sold</th><th>Revenue</th></tr>`;
+  topProds.forEach(prod => {
+    const stockBadge = prod.stock === 0
+      ? `<span class="badge badge-low">Out</span>`
+      : prod.stock < 5
+      ? `<span class="badge badge-low">${prod.stock}</span>`
+      : `<span class="badge badge-ok">${prod.stock}</span>`;
+    t += `<tr>
+      <td style="font-weight:500">${prod.name}</td>
+      <td style="color:var(--muted)">${prod.color || "—"}</td>
+      <td>${stockBadge}</td>
+      <td>${prod.qty}</td>
+      <td style="color:var(--gold)">$${prod.rev.toFixed(2)}</td>
+    </tr>`;
+  });
+  $("toptable").innerHTML = t + "</table>";
+}
+
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Urban Vault — P&L</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --gold: #d4af37;
+    --bg: #141a0e; --bg2: #1c2413; --bg3: #232e18;
+    --surface: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.08);
+    --text: #f0ede6; --muted: rgba(240,237,230,0.5);
+    --danger: #f87171; --success: #86efac;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  nav { background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 2px; padding: 0 20px; height: 52px; }
+  .nav-brand { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); letter-spacing:.05em; margin-right: 24px; }
+  nav a { color: var(--muted); text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; transition: all .15s; }
+  nav a:hover { color: var(--text); background: var(--surface); }
+  nav a.active { color: var(--gold); background: rgba(212,175,55,0.1); }
+  .page { padding: 28px 24px; max-width: 1000px; margin: 0 auto; }
+  .page-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: var(--gold); letter-spacing:.05em; margin-bottom: 24px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; margin-bottom: 32px; }
+  .stat-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 18px 16px; }
+  .stat-card .slabel { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing:.08em; margin-bottom: 8px; }
+  .stat-card .svalue { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--gold); }
+  .stat-card .svalue.green { color: var(--success); }
+  .stat-card .svalue.red   { color: var(--danger); }
+  .section-title { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing:.08em; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--bg3); color: var(--muted); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing:.06em; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: var(--surface); }
+  .bar-wrap { width: 100%; max-width: 180px; height: 6px; background: var(--bg3); border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; }
+  .positive { background: var(--success); }
+  .negative { background: var(--danger); }
+  .loading { color: var(--muted); font-size: 13px; padding: 16px 0; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand">Urban Vault</div>
+  <a href="index.html">Dashboard</a>
+  <a href="pos.html">POS</a>
+  <a href="products.html">Products</a>
+  <a href="sales.html">Sales</a>
+  <a href="pl.html" class="active">P&amp;L</a>
+  <a href="customers.html">Customers</a>
+</nav>
+
+<div class="page">
+  <div class="page-title">Profit &amp; Loss</div>
+
+  <div class="summary-grid" id="summary"><div class="stat-card"><div class="slabel">Loading</div><div class="svalue">...</div></div></div>
+
+  <div class="section-title">Per product breakdown</div>
+  <div id="plTable"><p class="loading">Loading...</p></div>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script>
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+
+async function load() {
+  const [{ data: products }, { data: purchases }, { data: saleItems }, { data: inventory }] = await Promise.all([
+    client.from("products").select("*"),
+    client.from("purchases").select("*"),
+    client.from("sale_items").select("*"),
+    client.from("inventory").select("*")
+  ]);
+
+  const p = products || [], pur = purchases || [], si = saleItems || [], inv = inventory || [];
+
+  const rows = p.map(prod => {
+    const investment = pur.filter(x => x.product_id === prod.id).reduce((s, b) => s + b.quantity * b.cost_per_unit, 0);
+    const soldItems  = si.filter(x => x.product_id === prod.id);
+    const soldQty    = soldItems.reduce((s, x) => s + x.quantity, 0);
+    const revenue    = soldQty * prod.selling_price;
+    const profit     = revenue - investment;
+    const pct        = investment ? ((profit / investment) * 100).toFixed(1) : 0;
+    const stock      = inv.filter(x => x.product_id === prod.id).reduce((s, x) => s + x.quantity, 0);
+    const stockValue = stock * prod.selling_price;
+    return { ...prod, investment, soldQty, revenue, profit, pct, stock, stockValue };
+  });
+
+  const totInv = rows.reduce((s, r) => s + r.investment, 0);
+  const totRev = rows.reduce((s, r) => s + r.revenue, 0);
+  const totPro = totRev - totInv;
+  const totPct = totInv ? ((totPro / totInv) * 100).toFixed(1) : 0;
+  const totStockVal = rows.reduce((s, r) => s + r.stockValue, 0);
+  const profClass = totPro >= 0 ? "green" : "red";
+
+  $("summary").innerHTML = `
+    <div class="stat-card"><div class="slabel">Total Investment</div><div class="svalue">$${totInv.toFixed(2)}</div></div>
+    <div class="stat-card"><div class="slabel">Total Revenue</div><div class="svalue">$${totRev.toFixed(2)}</div></div>
+    <div class="stat-card"><div class="slabel">Net Profit</div><div class="svalue ${profClass}">$${totPro.toFixed(2)}</div></div>
+    <div class="stat-card"><div class="slabel">Profit %</div><div class="svalue ${profClass}">${totPct}%</div></div>
+    <div class="stat-card"><div class="slabel">Stock Value</div><div class="svalue">$${totStockVal.toFixed(2)}</div></div>
+  `;
+
+  if (rows.length === 0) {
+    $("plTable").innerHTML = `<p class="loading">No products yet.</p>`;
+    return;
+  }
+
+  const maxProfit = Math.max(...rows.map(r => Math.abs(r.profit)), 1);
+
+  let html = `<table>
+    <tr>
+      <th>Product</th>
+      <th>Color</th>
+      <th>Investment</th>
+      <th>Revenue</th>
+      <th>Profit</th>
+      <th>Profit %</th>
+      <th>Stock</th>
+      <th>P/L bar</th>
+    </tr>`;
+
+  rows.sort((a, b) => b.profit - a.profit).forEach(r => {
+    const pClass = r.profit >= 0 ? "green" : "red";
+    const pctStr = r.profit >= 0 ? `+${r.pct}%` : `${r.pct}%`;
+    const barPct = Math.round((Math.abs(r.profit) / maxProfit) * 100);
+    const barClass = r.profit >= 0 ? "positive" : "negative";
+
+    html += `<tr>
+      <td style="font-weight:500">${r.name}</td>
+      <td style="color:var(--muted)">${r.color || "—"}</td>
+      <td>$${r.investment.toFixed(2)}</td>
+      <td>$${r.revenue.toFixed(2)}</td>
+      <td style="color:var(--${r.profit >= 0 ? 'success' : 'danger'});font-weight:500">$${r.profit.toFixed(2)}</td>
+      <td style="color:var(--${r.profit >= 0 ? 'success' : 'danger'})">${pctStr}</td>
+      <td>${r.stock}</td>
+      <td><div class="bar-wrap"><div class="bar-fill ${barClass}" style="width:${barPct}%"></div></div></td>
+    </tr>`;
+  });
+
+  $("plTable").innerHTML = html + "</table>";
+}
+
+load();
+</script>
+</body>
+</html>
